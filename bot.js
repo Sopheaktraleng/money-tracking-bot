@@ -32,11 +32,13 @@ function sendMainMenu(ctx) {
     const username = ctx.from.username
         ? `@${ctx.from.username}`
         : ctx.from.first_name;
-    const totalToday = getTotalToday();
+    const totalToday = getTotalToday().toLocaleString();
+    const todayDate = moment().format("MMMM D, YYYY");
 
     ctx.reply(
-        `👋 Welcome, *${username}*! I am *Money Tracker Bot*! 💰\n\n` +
-            `📅 *Today's Total Expense:* KHR ${totalToday.toFixed(2)}\n\n` +
+        `👋 Welcome, ${username}\n\n` +
+            `📅 ${todayDate} \n\n` +
+            `💰 Today's Total Expense: ${totalToday} KHR\n\n` +
             "Track your expenses easily. Choose an option below:",
         Markup.inlineKeyboard([
             [Markup.button.callback("➕ Add Expense", "add_expense")],
@@ -45,9 +47,10 @@ function sendMainMenu(ctx) {
                     "📜 View Transactions",
                     "view_transactions"
                 ),
+                Markup.button.callback("🗑 Clear Data", "clear_data"),
             ],
         ]),
-        { parse_mode: "Markdown" }
+        { parse_mode: "MarkdownV2" }
     );
 }
 
@@ -59,7 +62,7 @@ bot.start((ctx) => {
 // Handle "Add Expense" button click
 bot.action("add_expense", (ctx) => {
     ctx.reply(
-        "Enter your expense in this format:\n`/add <amount> <category>`\n\nExample: `/add 15 Dinner`",
+        "🚀 Enter your expense in this format:\n\n⚡️ Example: `/add 15 Dinner`",
         { parse_mode: "Markdown" }
     );
 });
@@ -77,6 +80,32 @@ bot.action("view_transactions", (ctx) => {
     });
 
     ctx.reply(message, { parse_mode: "Markdown" });
+});
+// Handle "Clear Data" button click (Ask for Confirmation)
+bot.action("clear_data", (ctx) => {
+    ctx.reply(
+        "⚠️ Are you sure you want to clear today's expenses? This action cannot be undone.",
+        Markup.inlineKeyboard([
+            [Markup.button.callback("✅ Yes, Clear", "confirm_clear")],
+            [Markup.button.callback("❌ Cancel", "cancel_clear")],
+        ])
+    );
+});
+
+// Handle Confirmation for Clearing Data
+bot.action("confirm_clear", (ctx) => {
+    const date = moment().format("YYYY-MM-DD");
+    if (expenses[date]) {
+        delete expenses[date];
+    }
+
+    ctx.reply("✅ All today's expenses have been cleared.");
+    sendMainMenu(ctx);
+});
+
+// Handle Cancel Clear Action
+bot.action("cancel_clear", (ctx) => {
+    ctx.reply("❌ Action cancelled. Your data is safe.");
 });
 
 // Handle /add command
