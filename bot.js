@@ -1,38 +1,41 @@
 require("dotenv").config();
 const { Telegraf, Markup } = require("telegraf");
-const fs = require("fs");
+const mongoose = require("mongoose");
 const moment = require("moment");
 
+// Connect to MongoDB
+mongoose
+    .connect(process.env.MONGO_URI)
+    .then(() => console.log("✅ Connected to MongoDB"))
+    .catch((err) => console.error("❌ MongoDB Connection Error:", err));
+
+// Define Expense Schema
+const expenseSchema = new mongoose.Schema({
+    userId: String,
+    date: String,
+    amount: Number,
+    category: String,
+});
+
+// Expense Model
+const Expense = mongoose.model("Expense", expenseSchema);
+
 const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
-const DATA_FILE = "expenses.json";
-
-// Load expenses from file
-function loadExpenses() {
-    if (!fs.existsSync(DATA_FILE)) return {};
-    return JSON.parse(fs.readFileSync(DATA_FILE, "utf8"));
-}
-
-// Save expenses to file
-function saveExpenses(data) {
-    fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
-}
-
-// Initialize expenses data
-let expenses = loadExpenses();
 
 // Function to get total expenses for today
-function getTotalToday() {
+async function getTotalToday(userId) {
     const date = moment().format("YYYY-MM-DD");
-    if (!expenses[date]) return 0;
-    return expenses[date].reduce((sum, entry) => sum + entry.amount, 0);
+    const expenses = await Expense.find({ userId, date });
+    return expenses.reduce((sum, entry) => sum + entry.amount, 0);
 }
 
 // Function to send the main menu
-function sendMainMenu(ctx) {
+async function sendMainMenu(ctx) {
+    const userId = ctx.from.id.toString();
     const username = ctx.from.username
         ? `@${ctx.from.username}`
         : ctx.from.first_name;
-    const totalToday = getTotalToday().toLocaleString();
+    const totalToday = (await getTotalToday(userId)).toLocaleString();
     const todayDate = moment().format("MMMM D, YYYY");
 
     ctx.reply(
@@ -63,24 +66,28 @@ bot.start((ctx) => {
 bot.action("add_expense", (ctx) => {
     ctx.reply(
         "🚀 Enter your expense in this format:\n\n⚡️ Example: `/add 15 Dinner`",
-        { parse_mode: "Markdown" }
+        { parse_mode: "MarkdownV2" }
     );
 });
 
 // Handle "View Transactions" button click
-bot.action("view_transactions", (ctx) => {
+bot.action("view_transactions", async (ctx) => {
+    const userId = ctx.from.id.toString();
     const date = moment().format("YYYY-MM-DD");
-    if (!expenses[date] || expenses[date].length === 0) {
+    const expenses = await Expense.find({ userId, date });
+
+    if (expenses.length === 0) {
         return ctx.reply("📜 No transactions recorded today.");
     }
 
     let message = `📅 *Transactions for Today:*\n\n`;
-    expenses[date].forEach((entry, index) => {
-        message += `${index + 1}. *${entry.category}* - $${entry.amount}\n`;
+    expenses.forEach((entry, index) => {
+        message += `${index + 1}. *${entry.category}*  KHR${entry.amount}\n`;
     });
 
-    ctx.reply(message, { parse_mode: "Markdown" });
+    ctx.reply(message, { parse_mode: "MarkdownV2" });
 });
+
 // Handle "Clear Data" button click (Ask for Confirmation)
 bot.action("clear_data", (ctx) => {
     ctx.reply(
@@ -93,11 +100,11 @@ bot.action("clear_data", (ctx) => {
 });
 
 // Handle Confirmation for Clearing Data
-bot.action("confirm_clear", (ctx) => {
+bot.action("confirm_clear", async (ctx) => {
+    const userId = ctx.from.id.toString();
     const date = moment().format("YYYY-MM-DD");
-    if (expenses[date]) {
-        delete expenses[date];
-    }
+
+    await Expense.deleteMany({ userId, date });
 
     ctx.reply("✅ All today's expenses have been cleared.");
     sendMainMenu(ctx);
@@ -109,12 +116,13 @@ bot.action("cancel_clear", (ctx) => {
 });
 
 // Handle /add command
-bot.command("add", (ctx) => {
+bot.command("add", async (ctx) => {
+    const userId = ctx.from.id.toString();
     const parts = ctx.message.text.split(" ");
     if (parts.length < 3) {
         return ctx.reply(
             "❌ Usage: `/add <amount> <category>`\nExample: `/add 10 Lunch`",
-            { parse_mode: "Markdown" }
+            { parse_mode: "MarkdownV2" }
         );
     }
 
@@ -126,17 +134,14 @@ bot.command("add", (ctx) => {
         return ctx.reply("❌ Please enter a valid amount.");
     }
 
-    if (!expenses[date]) expenses[date] = [];
-    expenses[date].push({ amount, category });
+    await Expense.create({ userId, date, amount, category });
 
-    saveExpenses(expenses);
+    const totalToday = await getTotalToday(userId);
 
-    const totalToday = getTotalToday();
-
-    ctx.reply(`✅ *KHR${amount}* added for *${category}* on ${date}`, {
-        parse_mode: "Markdown",
+    ctx.reply(`⛄️ *${amount}KHR* added for *${category}* on ${date}`, {
+        parse_mode: "MarkdownV2",
     }).then(() => {
-        sendMainMenu(ctx); // Show updated menu after adding expense
+        sendMainMenu(ctx);
     });
 });
 
