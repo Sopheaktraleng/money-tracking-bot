@@ -1,4 +1,8 @@
 require("dotenv").config();
+const express = require("express");
+const app = express();
+app.use(express.json());
+
 const { Telegraf, Markup } = require("telegraf");
 const mongoose = require("mongoose");
 const moment = require("moment");
@@ -145,10 +149,9 @@ bot.command("add", async (ctx) => {
     });
 });
 
-// Start bot
-bot.launch();
-console.log("🚀 Money Tracker Bot is running...");
-
-// Graceful stop
-process.once("SIGINT", () => bot.stop("SIGINT"));
-process.once("SIGTERM", () => bot.stop("SIGTERM"));
+// Set webhook route
+app.post(`/webhook/${process.env.TELEGRAM_BOT_TOKEN}`, (req, res) => {
+    bot.handleUpdate(req.body);
+    res.sendStatus(200);
+});
+module.exports = app;
