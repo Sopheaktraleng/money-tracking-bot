@@ -1,8 +1,4 @@
 require("dotenv").config();
-const express = require("express");
-const app = express();
-app.use(express.json());
-
 const { Telegraf, Markup } = require("telegraf");
 const mongoose = require("mongoose");
 const moment = require("moment");
@@ -84,9 +80,12 @@ bot.action("view_transactions", async (ctx) => {
         return ctx.reply("📜 No transactions recorded today.");
     }
 
-    let message = `📅 *Transactions for Today:*\n\n`;
+    let message = escapeMarkdownV2(`📅 *Transactions for Today:*\n\n`);
     expenses.forEach((entry, index) => {
-        message += `${index + 1}. *${entry.category}*  KHR${entry.amount}\n`;
+        const category = escapeMarkdownV2(entry.category);
+        const amount = escapeMarkdownV2(entry.amount.toString());
+
+        message += `${index + 1}\\. *${category}*  KHR${amount}\n`;
     });
 
     ctx.reply(message, { parse_mode: "MarkdownV2" });
@@ -140,18 +139,27 @@ bot.command("add", async (ctx) => {
 
     await Expense.create({ userId, date, amount, category });
 
-    const totalToday = await getTotalToday(userId);
+    // Escape MarkdownV2 special characters
+    const escapedCategory = escapeMarkdownV2(category);
+    const escapedDate = escapeMarkdownV2(date);
+    const escapedAmount = escapeMarkdownV2(amount.toString());
 
-    ctx.reply(`⛄️ *${amount}KHR* added for *${category}* on ${date}`, {
-        parse_mode: "MarkdownV2",
-    }).then(() => {
+    ctx.reply(
+        `⛄️ *${escapedAmount}KHR* added for *${escapedCategory}* on ${escapedDate}`,
+        { parse_mode: "MarkdownV2" }
+    ).then(() => {
         sendMainMenu(ctx);
     });
 });
 
-// Set webhook route
-app.post(`/webhook/${process.env.TELEGRAM_BOT_TOKEN}`, (req, res) => {
-    bot.handleUpdate(req.body);
-    res.sendStatus(200);
-});
-module.exports = app;
+function escapeMarkdownV2(text) {
+    return text.replace(/[_*[\]()~`>#+-=|{}.!]/g, "\\$&");
+}
+
+// Start bot
+bot.launch();
+console.log("🚀 Money Tracker Bot is running...");
+
+// Graceful stop
+process.once("SIGINT", () => bot.stop("SIGINT"));
+process.once("SIGTERM", () => bot.stop("SIGTERM"));
