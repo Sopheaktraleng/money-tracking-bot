@@ -65,7 +65,7 @@ bot.start((ctx) => {
 // Handle "Add Expense" button click
 bot.action("add_expense", (ctx) => {
     ctx.reply(
-        "🚀 Enter your expense in this format:\n\n⚡️ Example: `/add 15 Dinner`",
+        "🚀 Enter your expense in this format:\n\n Example: `/add 15 Dinner`",
         { parse_mode: "MarkdownV2" }
     );
 });
@@ -80,14 +80,14 @@ bot.action("view_transactions", async (ctx) => {
         return ctx.reply("📜 No transactions recorded today.");
     }
 
-    let message = escapeMarkdownV2(`📅 *Transactions for Today:*\n\n`);
+    let message = escapeMarkdownV2(`📅 Transactions for Today:\n\n`);
     expenses.forEach((entry, index) => {
         const category = escapeMarkdownV2(
             entry.category.charAt(0).toUpperCase() + entry.category.slice(1)
         );
-        const amount = escapeMarkdownV2(entry.amount.toString());
+        const amount = escapeMarkdownV2(entry.amount.toLocaleString());
 
-        message += `${index + 1}\\. *${category}*  KHR${amount}\n`;
+        message += `${index + 1}\\. *${category}*  *${amount}៛*\n`;
     });
 
     ctx.reply(message, { parse_mode: "MarkdownV2" });
@@ -142,12 +142,14 @@ bot.command("add", async (ctx) => {
     await Expense.create({ userId, date, amount, category });
 
     // Escape MarkdownV2 special characters
-    const escapedCategory = escapeMarkdownV2(category);
+    const capitalizedCategory =
+        category.charAt(0).toUpperCase() + category.slice(1);
+    const escapedCategory = escapeMarkdownV2(capitalizedCategory);
     const escapedDate = escapeMarkdownV2(date);
     const escapedAmount = escapeMarkdownV2(amount.toString());
 
     ctx.reply(
-        `⛄️ *${escapedAmount}KHR* added for *${escapedCategory}* on ${escapedDate}`,
+        `⛄️ *${escapedAmount}៛* added for *${escapedCategory}* on ${escapedDate}`,
         { parse_mode: "MarkdownV2" }
     ).then(() => {
         sendMainMenu(ctx);
