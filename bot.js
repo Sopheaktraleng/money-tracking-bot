@@ -82,7 +82,9 @@ bot.action("view_transactions", async (ctx) => {
 
     let message = escapeMarkdownV2(`📅 *Transactions for Today:*\n\n`);
     expenses.forEach((entry, index) => {
-        const category = escapeMarkdownV2(entry.category);
+        const category = escapeMarkdownV2(
+            entry.category.charAt(0).toUpperCase() + entry.category.slice(1)
+        );
         const amount = escapeMarkdownV2(entry.amount.toString());
 
         message += `${index + 1}\\. *${category}*  KHR${amount}\n`;
