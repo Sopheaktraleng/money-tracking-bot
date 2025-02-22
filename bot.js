@@ -28,6 +28,10 @@ async function getTotalToday(userId) {
     const expenses = await Expense.find({ userId, date });
     return expenses.reduce((sum, entry) => sum + entry.amount, 0);
 }
+async function getTotalExpenses(userId) {
+    const totalExpense = await Expense.find({ userId });
+    return totalExpense.reduce((sum, entry) => sum + entry.amount, 0);
+}
 
 // Function to send the main menu
 async function sendMainMenu(ctx) {
@@ -37,9 +41,11 @@ async function sendMainMenu(ctx) {
         : ctx.from.first_name;
     const totalToday = (await getTotalToday(userId)).toLocaleString();
     const todayDate = moment().format("MMMM D, YYYY");
+    const totalExpense = (await getTotalExpenses(userId)).toLocaleString();
 
     ctx.reply(
         `👋 Welcome, ${username}\n\n` +
+            `📊 Total Expenses: ${totalExpense} KHR\n\n` +
             `📅 ${todayDate} \n\n` +
             `💰 Today's Total Expense: ${totalToday} KHR\n\n` +
             "Track your expenses easily. Choose an option below:",
@@ -50,7 +56,7 @@ async function sendMainMenu(ctx) {
                     "📜 View Transactions",
                     "view_transactions"
                 ),
-                Markup.button.callback("🗑 Clear Data", "clear_data"),
+                Markup.button.callback("🗑🪼 Clear Data", "clear_data"),
             ],
         ]),
         { parse_mode: "MarkdownV2" }
