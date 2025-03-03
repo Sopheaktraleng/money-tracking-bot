@@ -24,10 +24,23 @@ const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
 
 // Function to get total expenses for today
 async function getTotalToday(userId) {
-    const date = moment().format("YYYY-MM-DD");
-    const expenses = await Expense.find({ userId, date });
+    const todayString = moment().format("YYYY-MM-DD"); // String format
+    const todayStart = moment().startOf("day").toDate(); // 00:00:00
+    const todayEnd = moment().endOf("day").toDate(); // 23:59:59
+
+    // Try fetching expenses by string date
+    let expenses = await Expense.find({ userId, date: todayString });
+
+    // If no results, check if "date" is stored as a Date object
+    if (expenses.length === 0) {
+        expenses = await Expense.find({
+            userId,
+            date: { $gte: todayStart, $lte: todayEnd },
+        });
+    }
     return expenses.reduce((sum, entry) => sum + entry.amount, 0);
 }
+
 async function getTotalExpenses(userId) {
     const totalExpense = await Expense.find({ userId });
     return totalExpense.reduce((sum, entry) => sum + entry.amount, 0);
