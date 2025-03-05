@@ -69,7 +69,7 @@ async function sendMainMenu(ctx) {
                     "📜 View Transactions",
                     "view_transactions"
                 ),
-                Markup.button.callback("🗑🪼 Clear Data", "clear_data"),
+                Markup.button.callback("🗑 Clear Data", "clear_data"),
             ],
         ]),
         { parse_mode: "MarkdownV2" }
